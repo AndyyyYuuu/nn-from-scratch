@@ -7,6 +7,7 @@ class Value:
     def __init__(self, data, _children=(), _op="", label=""):
         self.data = data
         self.label = label
+        self.grad = 0
         self._prev = _children
         self._op = _op
 
@@ -23,7 +24,6 @@ class Value:
 a = Value(5.0)
 b = Value(3.0)
 c = Value(6.0)
-print(a+b)
 util.draw_dot(a+b*c)
 '''
 def derivative(f, x, h = 0.00000001):
