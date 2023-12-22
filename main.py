@@ -6,6 +6,7 @@ import util
 class Value:
     def __init__(self, data, _children=(), _op="", label=""):
         self.data = data
+        self._backward = lambda: None
         self.label = label
         self.grad = 0
         self._prev = _children
@@ -14,17 +15,33 @@ class Value:
     def __repr__(self):
         return f"Value(data={self.data})"
 
+    def __str__(self):
+        return self.__repr__()
+
     def __add__(self, other):
-        return Value(self.data + other.data, (self, other), "+")
+        out = Value(self.data + other.data, (self, other), "+")
+        def _backward():
+            self.grad += 1.0 * out.grad
+            other.grad += 1.0 * out.grad
+        out._backward = _backward
+        return out
 
     def __mul__(self, other):
-        return Value(self.data * other.data, (self, other), "*")
+        out = Value(self.data * other.data, (self, other), "*")
+        return out
 
 
-a = Value(5.0)
-b = Value(3.0)
-c = Value(6.0)
-util.draw_dot(a+b*c)
+def ex():
+    a = Value(5.0, label="a")
+    b = Value(3.0, label="b")
+    c = Value(6.0, label="c")
+    d = b*a; d.label = "d"
+    e = b*c; e.label = "e"
+    l = d+e; l.label = "l"
+    l.grad = 1.0
+
+    util.draw_dot(b*a+b*c+a)
+ex()
 '''
 def derivative(f, x, h = 0.00000001):
     return numpy.round((f(x + h) - f(x))/h, int(abs(math.log(h, 10))-1))
