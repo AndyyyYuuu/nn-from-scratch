@@ -20,36 +20,66 @@ class Value:
 
     def __add__(self, other):
         out = Value(self.data + other.data, (self, other), "+")
-        def _backward():
-            self.grad += 1.0 * out.grad
-            other.grad += 1.0 * out.grad
+
+        def _backward(): # Addition: gradients stay the same
+            self.grad = 1.0 * out.grad
+            other.grad = 1.0 * out.grad
         out._backward = _backward
         return out
 
     def __mul__(self, other):
         out = Value(self.data * other.data, (self, other), "*")
+
+        def _backward():
+            self.grad = other.data * out.grad
+            other.grad = self.data * out.grad
+
+        out._backward = _backward
         return out
 
     def tanh(self):
         x = self.data
         t = (math.exp(2*x) - 1)/(math.exp(2*x)+1)
         out = Value(t, (self, ), "tanh")
-        print(x)
+
+        def _backward():
+            self.grad = (1 - t**2) * out.grad
+
+        out._backward = _backward
         return out
 
+    def backward(self):
+        topo = []
+        visited = set()
 
+        # Topological sort recursively
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v._prev:
+                    build_topo(child)
+                topo.append(v)
 
-def ex():
-    a = Value(5.0, label="a")
-    b = Value(3.0, label="b")
-    c = Value(6.0, label="c")
+        # Build topological sort starting from this value
+        build_topo(self)
+
+        self.grad = 1.0
+        # Backpropagate all nodes
+        for node in reversed(topo):
+            node._backward()
+
+def main():
+    a = Value(0.5, label="a")
+    b = Value(0.3, label="b")
+    c = Value(0.6, label="c")
     d = b*a; d.label = "d"
     e = b*c; e.label = "e"
     l = (d+e).tanh(); l.label = "l"
     l.grad = 1.0
+    l.backward()
     util.draw_dot(l)
-ex()
 
+main()
 '''
 def derivative(f, x, h = 0.00000001):
     return numpy.round((f(x + h) - f(x))/h, int(abs(math.log(h, 10))-1))
