@@ -19,6 +19,7 @@ class Value:
         return self.__repr__()
 
     def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)  # Wrap numbers with Value
         out = Value(self.data + other.data, (self, other), "+")
 
         def _backward(): # Addition: gradients stay the same
@@ -27,7 +28,14 @@ class Value:
         out._backward = _backward
         return out
 
+    def __neg__(self):
+        return self * -1
+
+    def __sub__(self, other):
+        return self + (-other)
+
     def __mul__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data * other.data, (self, other), "*")
 
         def _backward():
@@ -35,6 +43,32 @@ class Value:
             other.grad += self.data * out.grad
 
         out._backward = _backward
+        return out
+
+    def __rmul__(self, other):  # Fallback method for num * Value
+        return self * other
+
+    def __pow__(self, other):
+        assert isinstance(other, (int, float)), "only supporting int/float"
+        out = Value(self.data ** other, (self,), f"^{other}")
+
+        def _backward():
+            self.grad += other * self.data ** (other-1) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def __truediv__(self, other):
+        return self * (other**-1)
+
+    def exp(self):
+        x = self.data
+        out = Value(math.exp(x), (self, ), "exp")
+
+        def _backward():
+            self.grad += out.data * out.grad
+        out._backward = _backward
+
         return out
 
     def tanh(self):
@@ -68,27 +102,20 @@ class Value:
         for node in reversed(topo):
             node._backward()
 
+
 def main():
     a = Value(0.5, label="a")
     b = Value(0.3, label="b")
     c = Value(0.6, label="c")
     d = b*a; d.label = "d"
     e = b*c; e.label = "e"
-    l = (d+e).tanh(); l.label = "l"
+    f = d+e; f.label = "f"
+    l = ((2*f).exp()-1)/((2*f).exp()+1)
+    # l = d.tanh();
+    l.label = "l"
     l.grad = 1.0
     l.backward()
     util.draw_dot(l)
 
+
 main()
-'''
-def derivative(f, x, h = 0.00000001):
-    return numpy.round((f(x + h) - f(x))/h, int(abs(math.log(h, 10))-1))
-
-print(derivative(lambda x: x**2+2*x+5, 0.430994))
-x = numpy.linspace(-2, 2, 100)
-y = derivative(lambda x: 3*x**4-4*x**3+x**2+2*x+5, x)
-fig = pyplot.figure(figsize=(10, 5))
-pyplot.plot(x, y)
-
-pyplot.show()
-'''
