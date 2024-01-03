@@ -38,6 +38,9 @@ class Value:
     def __sub__(self, other):
         return self + (-other)
 
+    def __rsub__(self, other):
+        return -self + other
+
     def __mul__(self, other):
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data * other.data, (self, other), "*")
@@ -119,6 +122,9 @@ class Neuron:
         out = act.tanh()
         return out
 
+    def get_parameters(self):
+        return self.w + [self.b]
+
 class Layer:
 
     def __init__(self, nin, nout):
@@ -128,6 +134,12 @@ class Layer:
         outs = [n(x) for n in self.neurons]  # List neuron forward-passes
         return outs[0] if len(outs) == 1 else outs
 
+    def get_parameters(self):
+        params = []
+        for neuron in self.neurons:
+            ps = neuron.get_parameters()
+            params.extend(ps)
+        return params
 class MLP:
     def __init__(self, nin, nouts):
         sz = [nin] + nouts
@@ -138,6 +150,39 @@ class MLP:
             x = layer(x)
         return x
 
-nn = MLP(3, [10, 10, 1])
-util.draw_dot(nn([2.0, 3.0, -1.0]))
+    def get_parameters(self):
+        params = []
+        for layer in self.layers:
+            ps = layer.get_parameters()
+            params.extend(ps)
+        return params
 
+def mean_squared_error(ys, ypred):
+    return sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
+
+nn = MLP(3, [4, 4, 1])
+# util.draw_dot(nn([2.0, 3.0, -1.0]))
+
+STEP_SIZE = 0.1
+
+xs = [
+  [2.0, 3.0, -1.0],
+  [3.0, -1.0, 0.5],
+  [0.5, 1.0, 1.0],
+  [1.0, 1.0, -1.0],
+]
+ys = [1.0, -1.0, -1.0, 1.0] # desired targets
+
+parameters = nn.get_parameters()
+print(f"Parameters: {len(parameters)}")
+
+# util.draw_dot(loss)
+
+for i in range(100):
+    ypred = [nn(x) for x in xs]  # Forward pass
+    loss = mean_squared_error(ys, ypred)  # Compute loss
+    loss.backward()  # Backward pass
+    print(loss)
+    for p in parameters:
+        p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
+print(ypred)
