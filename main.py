@@ -163,7 +163,7 @@ def mean_squared_error(ys, ypred):
 nn = MLP(3, [4, 4, 1])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
-STEP_SIZE = 0.1
+STEP_SIZE = 0.05
 
 xs = [
   [2.0, 3.0, -1.0],
@@ -178,9 +178,11 @@ print(f"Parameters: {len(parameters)}")
 
 # util.draw_dot(loss)
 
-for i in range(100):
+for i in range(1000):
     ypred = [nn(x) for x in xs]  # Forward pass
     loss = mean_squared_error(ys, ypred)  # Compute loss
+    for p in nn.get_parameters():
+        p.grad = 0.0  # Reset gradients to 0
     loss.backward()  # Backward pass
     print(loss)
     for p in parameters:
