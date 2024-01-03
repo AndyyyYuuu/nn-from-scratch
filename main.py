@@ -1,4 +1,5 @@
 import math
+import random
 import numpy
 from matplotlib import pyplot
 import util
@@ -22,11 +23,14 @@ class Value:
         other = other if isinstance(other, Value) else Value(other)  # Wrap numbers with Value
         out = Value(self.data + other.data, (self, other), "+")
 
-        def _backward(): # Addition: gradients stay the same
+        def _backward():  # Addition: gradients stay the same
             self.grad += 1.0 * out.grad
             other.grad += 1.0 * out.grad
         out._backward = _backward
         return out
+
+    def __radd__(self, other):
+        return self + other
 
     def __neg__(self):
         return self * -1
@@ -102,20 +106,38 @@ class Value:
         for node in reversed(topo):
             node._backward()
 
+class Neuron:
+    def __init__(self, nin):
+        # Initialize with random weights and biases
+        self.w = [Value(random.uniform(-1, 1), label="w") for i in range(nin)]
+        self.b = Value(random.uniform(-1, 1), label="b")
 
-def main():
-    a = Value(0.5, label="a")
-    b = Value(0.3, label="b")
-    c = Value(0.6, label="c")
-    d = b*a; d.label = "d"
-    e = b*c; e.label = "e"
-    f = d+e; f.label = "f"
-    l = ((2*f).exp()-1)/((2*f).exp()+1)
-    # l = d.tanh();
-    l.label = "l"
-    l.grad = 1.0
-    l.backward()
-    util.draw_dot(l)
+    def __call__(self, x):
+        # Weights and biases
+        act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
+        act.label = "act"
+        out = act.tanh()
+        return out
 
+class Layer:
 
-main()
+    def __init__(self, nin, nout):
+        self.neurons = [Neuron(nin) for i in range(nout)]
+
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]  # List neuron forward-passes
+        return outs[0] if len(outs) == 1 else outs
+
+class MLP:
+    def __init__(self, nin, nouts):
+        sz = [nin] + nouts
+        self.layers = [Layer(sz[i], sz[i+1]) for i in range(len(nouts))]  # Create all layers
+
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+nn = MLP(3, [10, 10, 1])
+util.draw_dot(nn([2.0, 3.0, -1.0]))
+
