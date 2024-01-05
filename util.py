@@ -5,14 +5,21 @@ def trace(root):
     # builds a set of all nodes and edges in a graph
     nodes, edges = set(), set()
 
-    def build(v):
+    def build(v, depth):
         if v not in nodes:
             nodes.add(v)
             for child in v._prev:
                 edges.add((child, v))
-                build(child)
 
-    build(root)
+                if depth > 50:
+                    v.label += "!2"
+                    child.label += "!1"
+                    break
+
+                build(child, depth+1)
+
+
+    build(root, 0)
     return nodes, edges
 
 def draw_dot(root):
