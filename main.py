@@ -40,6 +40,8 @@ class Value:
         self.grad = 0
         self._prev = _children
         self._op = _op
+        if self._op.isnumeric():
+            print(self._op)
 
     def __repr__(self):
         return f"Value(data={self.data})"
@@ -187,14 +189,25 @@ class MLP:
         return params
 
 def mean_squared_error_o(ys, ypred):
+    print(ys, ypred)
     return sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
 
 def mean_squared_error(ys, ypred):
-    return sum([(yout - ygt)**2 for sublist_gt, sublist_pred in zip(ys, ypred) for ygt, yout in zip(sublist_gt, sublist_pred)]) / sum(len(sublist_gt) for sublist_gt in ys)
+    s = Value(0.0, label="sqerr")
+    for i in range(len(ys)):
+        for j in range(len(ys[i])):
+            s = s*(ys[i][j]-ypred[i][j])**2
+
+
+    # s = (ys[0][0]-ypred[0][0])**2+(ys[0][1]-ypred[0][1])**2
+
+    return s
+    # return sum([mean_squared_error_o(ygt, yout) for ygt, yout in zip(ys, ypred)])
+    return sum([(yout - ygt)**2 for sublist_gt, sublist_pred in zip(ys, ypred) for ygt, yout in zip(sublist_gt, sublist_pred)])# / sum(len(sublist_gt) for sublist_gt in ys)
 
 
 
-nn = MLP(4, [10, 10, 5])
+nn = MLP(4, [2, 2, 5])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 STEP_SIZE = 0.05
@@ -229,7 +242,10 @@ print(f"Parameters: {len(parameters)}")
 for i in range(100):
     print(f"Epoch: {i}")
     ypred = [nn(x) for x in train_x]  # Forward pass
-    loss = mean_squared_error(train_y, ypred)  # Compute loss
+    print(ypred[0][0])
+    #util.draw_dot(ypred[0][0])
+    loss = mean_squared_error(train_y, ypred)
+    #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
     util.draw_dot(loss)
 
@@ -240,4 +256,3 @@ for i in range(100):
 
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
-print(nn([0.3, 0.4]))

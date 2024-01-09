@@ -12,8 +12,8 @@ def trace(root):
                 edges.add((child, v))
 
                 if depth > 50:
-                    v.label += "!2"
-                    child.label += "!1"
+                    v.label += " !2"
+                    child.label += " !1"
                     break
 
                 build(child, depth+1)
@@ -33,6 +33,7 @@ def draw_dot(root):
         if n._op:
             # if this value is a result of some operation, create an op node for it
             dot.node(name=uid + n._op, label=n._op)
+
             # and connect this node to it
             dot.edge(uid + n._op, uid)
 
