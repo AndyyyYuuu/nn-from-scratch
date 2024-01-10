@@ -28,8 +28,8 @@ with open('data/seattle-weather.csv', 'r') as file:
         weather_index = list(weather_map.keys())[list(weather_map.values()).index(row[5])]
         all_y.append([1.0 if i == weather_index else -1.0 for i in range(NUM_CLASSES)])
 
-train_x = all_x[:math.floor(len(all_x)*0.8)]
-train_y = all_y[:math.floor(len(all_x)*0.8)]
+train_x = all_x[:math.floor(len(all_x)*0.1)]
+train_y = all_y[:math.floor(len(all_x)*0.1)]
 
 
 class Value:
@@ -196,7 +196,7 @@ def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
     for i in range(len(ys)):
         for j in range(len(ys[i])):
-            s = s*(ys[i][j]-ypred[i][j])**2
+            s += (ys[i][j]-ypred[i][j])**2
 
 
     # s = (ys[0][0]-ypred[0][0])**2+(ys[0][1]-ypred[0][1])**2
@@ -247,7 +247,7 @@ for i in range(100):
     loss = mean_squared_error(train_y, ypred)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
-    util.draw_dot(loss)
+    #util.draw_dot(loss)
 
     print(f"Loss: {loss}")
     for p in nn.get_parameters():
