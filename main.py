@@ -13,7 +13,7 @@ weather_map = {
 }
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.001
+STEP_SIZE = 0.00001
 
 all_x = []
 all_y = []
@@ -28,8 +28,8 @@ with open('data/seattle-weather.csv', 'r') as file:
         weather_index = list(weather_map.keys())[list(weather_map.values()).index(row[5])]
         all_y.append([1.0 if i == weather_index else -1.0 for i in range(NUM_CLASSES)])
 
-train_x = all_x[:math.floor(len(all_x)*0.1)]
-train_y = all_y[:math.floor(len(all_x)*0.1)]
+train_x = all_x[:math.floor(len(all_x)*0.5)]
+train_y = all_y[:math.floor(len(all_x)*0.5)]
 valid_x = all_y[math.floor(len(all_x)*0.8):]
 valid_y = all_y[math.floor(len(all_x)*0.8):]
 
@@ -131,12 +131,13 @@ class Value:
 
     def tanh(self):
         x = self.data
-        if x > 20:
-            t = 1.0
-        elif x < -20:
-            t = -1.0
-        else:
+        try:
             t = (math.exp(2 * x) - 1) / (math.exp(2 * x) + 1)
+        except OverflowError:
+            if x > 0:
+                t = 1.0
+            else:
+                t = -1.0
         '''
         if x < 0:
             t = 2 * math.exp(x) / (1+math.exp(2*x)) - 1
@@ -220,17 +221,26 @@ class MLP:
             params.extend(ps)
         return params
 
+def optim_sum(l):
+    if len(l) == 2:
+        return l[0]+l[1]
+    if len(l) == 1:
+        return l[0]
+    return optim_sum(l[len(l)//2:]) + optim_sum(l[:len(l)//2])
+
+
 def mean_squared_error_o(ys, ypred):
     print(ys, ypred)
     return sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
 
 def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
+    values = []
     for i in range(len(ys)):
         for j in range(len(ys[i])):
-            s += (ys[i][j]-ypred[i][j])**2
+            values.append((ys[i][j]-ypred[i][j])**2)
 
-
+    return optim_sum(values)
     # s = (ys[0][0]-ypred[0][0])**2+(ys[0][1]-ypred[0][1])**2
 
     return s
@@ -239,7 +249,7 @@ def mean_squared_error(ys, ypred):
 
 
 
-nn = MLP(4, [2, 2, 5])
+nn = MLP(4, [5, 5, 5])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 
