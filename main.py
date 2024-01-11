@@ -4,7 +4,6 @@ import csv
 import numpy
 from matplotlib import pyplot
 import util
-
 weather_map = {
     0: "sun",
     1: "fog",
@@ -14,6 +13,7 @@ weather_map = {
 }
 
 NUM_CLASSES = 5
+STEP_SIZE = 0.1
 
 all_x = []
 all_y = []
@@ -30,7 +30,8 @@ with open('data/seattle-weather.csv', 'r') as file:
 
 train_x = all_x[:math.floor(len(all_x)*0.1)]
 train_y = all_y[:math.floor(len(all_x)*0.1)]
-
+valid_x = all_y[math.floor(len(all_x)*0.8):]
+valid_y = all_y[math.floor(len(all_x)*0.8):]
 
 class Value:
     def __init__(self, data, _children=(), _op="", label=""):
@@ -97,6 +98,28 @@ class Value:
 
     def __truediv__(self, other):
         return self * (other**-1)
+
+
+    def __lt__(self, other):
+        return self.data < other.data
+
+    def __gt__(self, other):
+        return self.data > other.data
+
+    def __le__(self, other):
+        return self.data <= other.data
+
+    def __ge__(self, other):
+        return self.data >= other.data
+
+    def __eq__(self, other):
+        return self.data == other.data
+
+    def __hash__(self):
+        return id(self)
+
+    def __ne__(self, other):
+        return self.data != other.data
 
     def exp(self):
         x = self.data
@@ -207,10 +230,10 @@ def mean_squared_error(ys, ypred):
 
 
 
-nn = MLP(4, [2, 2, 5])
+nn = MLP(4, [10, 10, 5])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
-STEP_SIZE = 0.05
+
 '''
 xs = [
   [2.0, 3.0, -1.0],
@@ -240,14 +263,12 @@ print(f"Parameters: {len(parameters)}")
 # util.draw_dot(loss)
 
 for i in range(100):
-    print(f"Epoch: {i}")
+    print(f"\nEpoch: {i}")
     ypred = [nn(x) for x in train_x]  # Forward pass
-    print(ypred[0][0])
     #util.draw_dot(ypred[0][0])
     loss = mean_squared_error(train_y, ypred)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
-    #util.draw_dot(loss)
 
     print(f"Loss: {loss}")
     for p in nn.get_parameters():
@@ -256,3 +277,18 @@ for i in range(100):
 
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
+
+    print("Validation")
+    #VALIDATION
+
+    ypred = [nn(x) for x in valid_x]
+    total = 0
+    correct = 0
+    for p,y in zip(ypred, valid_y):
+        total += 1
+        if p.index(max(p)) == y.index(max(y)):
+            correct += 1
+    print(f"Accuracy: {correct}/{total} = {round(correct/total*100,2)}%")
+
+    for p in nn.get_parameters():
+        p.grad = 0.0  # Reset gradients to 0

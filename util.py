@@ -10,11 +10,12 @@ def trace(root):
             nodes.add(v)
             for child in v._prev:
                 edges.add((child, v))
-
+                '''
                 if depth > 50:
                     v.label += " !2"
                     child.label += " !1"
                     break
+                '''
 
                 build(child, depth+1)
 
