@@ -13,7 +13,7 @@ weather_map = {
 }
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.1
+STEP_SIZE = 0.001
 
 all_x = []
 all_y = []
@@ -41,8 +41,6 @@ class Value:
         self.grad = 0
         self._prev = _children
         self._op = _op
-        if self._op.isnumeric():
-            print(self._op)
 
     def __repr__(self):
         return f"Value(data={self.data})"
@@ -133,7 +131,18 @@ class Value:
 
     def tanh(self):
         x = self.data
-        t = (math.exp(2*x) - 1)/(math.exp(2*x)+1)
+        if x > 20:
+            t = 1.0
+        elif x < -20:
+            t = -1.0
+        else:
+            t = (math.exp(2 * x) - 1) / (math.exp(2 * x) + 1)
+        '''
+        if x < 0:
+            t = 2 * math.exp(x) / (1+math.exp(2*x)) - 1
+        else:
+            t = 2 * (1 / math.exp(-2*x)) - 1
+        '''
         out = Value(t, (self, ), "tanh")
 
         def _backward():
@@ -226,11 +235,11 @@ def mean_squared_error(ys, ypred):
 
     return s
     # return sum([mean_squared_error_o(ygt, yout) for ygt, yout in zip(ys, ypred)])
-    return sum([(yout - ygt)**2 for sublist_gt, sublist_pred in zip(ys, ypred) for ygt, yout in zip(sublist_gt, sublist_pred)])# / sum(len(sublist_gt) for sublist_gt in ys)
+    # return sum([(yout - ygt)**2 for sublist_gt, sublist_pred in zip(ys, ypred) for ygt, yout in zip(sublist_gt, sublist_pred)])# / sum(len(sublist_gt) for sublist_gt in ys)
 
 
 
-nn = MLP(4, [10, 10, 5])
+nn = MLP(4, [2, 2, 5])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 
@@ -278,13 +287,13 @@ for i in range(100):
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
 
-    print("Validation")
+    print("Validating ...")
     #VALIDATION
 
     ypred = [nn(x) for x in valid_x]
     total = 0
     correct = 0
-    for p,y in zip(ypred, valid_y):
+    for p, y in zip(ypred, valid_y):
         total += 1
         if p.index(max(p)) == y.index(max(y)):
             correct += 1
