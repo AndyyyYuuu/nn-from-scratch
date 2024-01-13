@@ -13,7 +13,7 @@ weather_map = {
 }
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.00001
+STEP_SIZE = 0.003
 
 all_x = []
 all_y = []
@@ -28,10 +28,10 @@ with open('data/seattle-weather.csv', 'r') as file:
         weather_index = list(weather_map.keys())[list(weather_map.values()).index(row[5])]
         all_y.append([1.0 if i == weather_index else -1.0 for i in range(NUM_CLASSES)])
 
-train_x = all_x[:math.floor(len(all_x)*0.5)]
-train_y = all_y[:math.floor(len(all_x)*0.5)]
-valid_x = all_y[math.floor(len(all_x)*0.8):]
-valid_y = all_y[math.floor(len(all_x)*0.8):]
+train_x = all_x[:math.floor(len(all_x)*0.8)]
+train_y = all_y[:math.floor(len(all_x)*0.8)]
+valid_x = all_y[math.floor(len(all_x)*0.2):]
+valid_y = all_y[math.floor(len(all_x)*0.2):]
 
 class Value:
     def __init__(self, data, _children=(), _op="", label=""):
@@ -249,7 +249,7 @@ def mean_squared_error(ys, ypred):
 
 
 
-nn = MLP(4, [5, 5, 5])
+nn = MLP(4, [2, 2, 5])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 
@@ -283,9 +283,9 @@ print(f"Parameters: {len(parameters)}")
 
 for i in range(100):
     print(f"\nEpoch: {i}")
-    ypred = [nn(x) for x in train_x]  # Forward pass
+    pred_y = [nn(x) for x in train_x]  # Forward pass
     #util.draw_dot(ypred[0][0])
-    loss = mean_squared_error(train_y, ypred)
+    loss = mean_squared_error(train_y, pred_y)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
 
@@ -293,21 +293,22 @@ for i in range(100):
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
     loss.backward()  # Backward pass
-
+    # util.draw_dot(loss)
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
-
+    STEP_SIZE *= 0.9
     print("Validating ...")
     #VALIDATION
 
-    ypred = [nn(x) for x in valid_x]
+    pred_y = [nn(x) for x in valid_x]
     total = 0
     correct = 0
-    for p, y in zip(ypred, valid_y):
+    for p, y in zip(pred_y, valid_y):
         total += 1
+        print(p.index(max(p)), end='')
         if p.index(max(p)) == y.index(max(y)):
             correct += 1
-    print(f"Accuracy: {correct}/{total} = {round(correct/total*100,2)}%")
+    print(f"\nAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
