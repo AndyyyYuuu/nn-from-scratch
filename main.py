@@ -9,23 +9,45 @@ weather_map = {
     1: "fog",
     2: "drizzle",
     3: "rain",
-    4: "snow"
+    4: "snow",
+    "sun": 0,
+    "fog": 1,
+    "drizzle": 2,
+    "rain": 3,
+    "snow": 4
 }
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.003
+STEP_SIZE = 0.01
+NUM_EPOCHS = 100
 
 all_x = []
 all_y = []
+
+
+def equalize_classes(data_list, num_classes):
+    categories = [[] for _ in range(num_classes)]
+    for row in data_list:
+        categories[weather_map.get(row[5])].append(row)
+    targ_len = min([len(c) for c in categories])
+    out = []
+    for sublist in [c[:targ_len] for c in categories]:
+        out.extend(sublist)
+
+    return out
+
 
 with open('data/seattle-weather.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
     data = list(reader)
+    print(len(data))
+    data = equalize_classes(data, NUM_CLASSES)
+    print(len(data))
     random.shuffle(data)
     for row in data:
         all_x.append([float(item) for item in row[1:5]])
-        weather_index = list(weather_map.keys())[list(weather_map.values()).index(row[5])]
+        weather_index = weather_map[row[5]]
         all_y.append([1.0 if i == weather_index else -1.0 for i in range(NUM_CLASSES)])
 
 train_x = all_x[:math.floor(len(all_x)*0.8)]
@@ -285,30 +307,33 @@ for i in range(100):
     print(f"\nEpoch: {i}")
     pred_y = [nn(x) for x in train_x]  # Forward pass
     #util.draw_dot(ypred[0][0])
-    loss = mean_squared_error(train_y, pred_y)
+    train_loss = mean_squared_error(train_y, pred_y)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
 
-    print(f"Loss: {loss}")
+    print(f"Training Loss: {train_loss.data}")
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
-    loss.backward()  # Backward pass
+    train_loss.backward()  # Backward pass
     # util.draw_dot(loss)
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
-    STEP_SIZE *= 0.9
+    STEP_SIZE *= 0.95
     print("Validating ...")
     #VALIDATION
 
     pred_y = [nn(x) for x in valid_x]
-    total = 0
+    valid_loss = mean_squared_error(train_y, pred_y)
+    total = len(pred_y)
     correct = 0
     for p, y in zip(pred_y, valid_y):
-        total += 1
         print(p.index(max(p)), end='')
         if p.index(max(p)) == y.index(max(y)):
+
             correct += 1
+
     print(f"\nAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
+    print(f"Loss: {valid_loss.data}")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
