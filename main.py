@@ -316,8 +316,7 @@ for i in range(NUM_EPOCHS):
 
 
     print(f"Training Loss: {train_loss.data}")
-    train_losses.append(train_loss.data)
-    pyplot.plot(range(i+1), train_losses, color="red")
+
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
@@ -331,8 +330,13 @@ for i in range(NUM_EPOCHS):
 
     pred_y = [nn(x) for x in valid_x]
     valid_loss = mean_squared_error(train_y, pred_y)
+
+    train_losses.append(train_loss.data)
+    train_loss_line = pyplot.plot(range(i + 1), train_losses, color="red", label="Training Loss")
     valid_losses.append(valid_loss.data)
-    pyplot.plot(range(i+1), valid_losses, color="blue")
+    valid_loss_line = pyplot.plot(range(i+1), valid_losses, color="blue", label="Validation Loss")
+    #pyplot.legend(handles=[train_loss_line, valid_loss_line])
+    pyplot.legend(["Training Loss", "Validation Loss"])
     pyplot.pause(0.001)
     total = len(pred_y)
     correct = 0
