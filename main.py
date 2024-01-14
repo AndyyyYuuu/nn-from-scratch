@@ -4,51 +4,38 @@ import csv
 import numpy
 from matplotlib import pyplot
 import util
-weather_map = {
-    0: "sun",
-    1: "fog",
-    2: "drizzle",
-    3: "rain",
-    4: "snow",
-    "sun": 0,
-    "fog": 1,
-    "drizzle": 2,
-    "rain": 3,
-    "snow": 4
-}
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.01
+STEP_SIZE = 0.1
 NUM_EPOCHS = 100
+
 
 all_x = []
 all_y = []
 
+def one_hot(string, classes):
+    return [1.0 if i == string else -1.0 for i in classes]
 
-def equalize_classes(data_list, num_classes):
-    categories = [[] for _ in range(num_classes)]
-    for row in data_list:
-        categories[weather_map.get(row[5])].append(row)
-    targ_len = min([len(c) for c in categories])
-    out = []
-    for sublist in [c[:targ_len] for c in categories]:
-        out.extend(sublist)
-
-    return out
-
-
-with open('data/seattle-weather.csv', 'r') as file:
+with open('data/mushrooms.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
     data = list(reader)
     print(len(data))
-    data = equalize_classes(data, NUM_CLASSES)
     print(len(data))
     random.shuffle(data)
-    for row in data:
-        all_x.append([float(item) for item in row[1:5]])
-        weather_index = weather_map[row[5]]
-        all_y.append([1.0 if i == weather_index else -1.0 for i in range(NUM_CLASSES)])
+    for r in data:
+        row = r[0].split(";")
+        this_x = []
+        this_x.append(float(row[1]))
+        this_x.extend(one_hot(row[2], ["b", "c", "x", "f", "s", "p", "o"]))  # Cap shape
+        this_x.extend(one_hot(row[3], ["i", "g", "y", "s", "h", "k", "t", "w", "e"]))  # Cap surface
+        this_x.extend(one_hot(row[4], ["n", "b", "g", "r", "p", "u", "e", "w", "y", "l", "o", "k"]))  # Cap color
+        this_x.append(float(row[9]))  # Stem height
+        this_x.append(float(row[10]))  # Stem width
+        all_x.append(this_x)
+        all_y.append(float({"p": -1.0, "e": 1.0}.get(row[0], 0)))  # Poisonous / Edible
+print(len(all_x[0]))
+
 
 train_x = all_x[:math.floor(len(all_x)*0.8)]
 train_y = all_y[:math.floor(len(all_x)*0.8)]
@@ -251,10 +238,10 @@ def optim_sum(l):
     return optim_sum(l[len(l)//2:]) + optim_sum(l[:len(l)//2])
 
 
-def mean_squared_error_o(ys, ypred):
+def mean_squared_error(ys, ypred):
     print(ys, ypred)
     return sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
-
+'''
 def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
     values = []
@@ -268,35 +255,11 @@ def mean_squared_error(ys, ypred):
     return s
     # return sum([mean_squared_error_o(ygt, yout) for ygt, yout in zip(ys, ypred)])
     # return sum([(yout - ygt)**2 for sublist_gt, sublist_pred in zip(ys, ypred) for ygt, yout in zip(sublist_gt, sublist_pred)])# / sum(len(sublist_gt) for sublist_gt in ys)
+'''
 
 
-
-nn = MLP(4, [2, 2, 5])
+nn = MLP(31, [16, 1])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
-
-
-'''
-xs = [
-  [2.0, 3.0, -1.0],
-  [3.0, -1.0, 0.5],
-  [0.5, 1.0, 1.0],
-  [1.0, 1.0, -1.0],
-]
-ys = [1.0, -1.0, -1.0, 1.0] # desired targets
-
-
-train_x = [
-    [0.2, 0.3],
-    [0.3, 0.1],
-    [-0.3, 0.2],
-    [0.5, 0.3],
-    [-0.1, 0.9],
-    [-0.5, -0.1]
-]
-'''
-#train_y = [0.5, 0.5, -0.1, 0.8, 0.8, -0.6]
-
-
 
 parameters = nn.get_parameters()
 print(f"Parameters: {len(parameters)}")
@@ -337,9 +300,7 @@ for i in range(NUM_EPOCHS):
     total = len(pred_y)
     correct = 0
     for p, y in zip(pred_y, valid_y):
-        print(p.index(max(p)), end='')
-        if p.index(max(p)) == y.index(max(y)):
-
+        if (p.data > 0) == (y > 0):
             correct += 1
 
     print(f"\nAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
