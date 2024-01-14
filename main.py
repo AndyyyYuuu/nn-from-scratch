@@ -303,7 +303,11 @@ print(f"Parameters: {len(parameters)}")
 
 # util.draw_dot(loss)
 
-for i in range(100):
+#pyplot.axis((0, NUM_EPOCHS, 0, 500))
+train_losses = []
+valid_losses = []
+
+for i in range(NUM_EPOCHS):
     print(f"\nEpoch: {i}")
     pred_y = [nn(x) for x in train_x]  # Forward pass
     #util.draw_dot(ypred[0][0])
@@ -312,6 +316,9 @@ for i in range(100):
 
 
     print(f"Training Loss: {train_loss.data}")
+    train_losses.append(train_loss.data)
+    pyplot.plot(range(i+1), train_losses, color="red")
+
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
     train_loss.backward()  # Backward pass
@@ -324,6 +331,9 @@ for i in range(100):
 
     pred_y = [nn(x) for x in valid_x]
     valid_loss = mean_squared_error(train_y, pred_y)
+    valid_losses.append(valid_loss.data)
+    pyplot.plot(range(i+1), valid_losses, color="blue")
+    pyplot.pause(0.001)
     total = len(pred_y)
     correct = 0
     for p, y in zip(pred_y, valid_y):
