@@ -1,8 +1,9 @@
 import math
 import random
+import sys
 import csv
-import numpy
 from matplotlib import pyplot
+from tqdm import tqdm
 import util
 
 NUM_CLASSES = 5
@@ -13,6 +14,16 @@ NUM_EPOCHS = 100
 all_x = []
 all_y = []
 
+
+def progress_iter(it, desc):
+    return tqdm(range(len(it)),
+                desc=f'\t{desc}',
+                unit=" batches",
+                file=sys.stdout,
+                colour="GREEN",
+                bar_format="{desc}: {percentage:0.2f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed} < {remaining}]")
+
+
 def one_hot(string, classes):
     return [1.0 if i == string else -1.0 for i in classes]
 
@@ -20,8 +31,7 @@ with open('data/mushrooms.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
     data = list(reader)
-    print(len(data))
-    print(len(data))
+    print(f"Data size: {len(data)}")
     random.shuffle(data)
     for r in data:
         row = r[0].split(";")
@@ -34,7 +44,7 @@ with open('data/mushrooms.csv', 'r') as file:
         this_x.append(float(row[10]))  # Stem width
         all_x.append(this_x)
         all_y.append(float({"p": -1.0, "e": 1.0}.get(row[0], 0)))  # Poisonous / Edible
-print(len(all_x[0]))
+print(f"Input size: {len(all_x[0])}")
 
 
 
@@ -278,15 +288,15 @@ for i in range(NUM_EPOCHS):
     valid_y = epoch_y[TRAIN_SPLIT:]
 
     print(f"\nEpoch: {i}")
-    pred_y = [nn(x) for x in train_x]  # Forward pass
+    pred_y = [nn(train_x[i]) for i in progress_iter(train_x, "Forward Pass")]  # Forward pass
     #util.draw_dot(ypred[0][0])
     train_loss = mean_squared_error(train_y, pred_y)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
 
-    print(f"Training Loss: {train_loss.data}")
+    print(f"\tTraining Loss: {train_loss.data}")
     train_losses.append(train_loss.data)
-    pyplot.plot(range(i+1), train_losses, color="red")
+    #pyplot.plot(range(i+1), train_losses, color="red")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
@@ -295,22 +305,21 @@ for i in range(NUM_EPOCHS):
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
     STEP_SIZE *= 0.95
-    print("Validating ...")
     #VALIDATION
 
-    pred_y = [nn(x) for x in valid_x]
+    pred_y = [nn(valid_x[i]) for i in progress_iter(valid_x, "Validating")]
     valid_loss = mean_squared_error(valid_y, pred_y)
     valid_losses.append(valid_loss.data)
-    pyplot.plot(range(i+1), valid_losses, color="blue")
-    pyplot.pause(0.001)
+    #pyplot.plot(range(i+1), valid_losses, color="blue")
+    #pyplot.pause(0.001)
     total = len(pred_y)
     correct = 0
     for p, y in zip(pred_y, valid_y):
         if (p.data > 0) == (y > 0):
             correct += 1
 
-    print(f"\nAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
-    print(f"Loss: {valid_loss.data}")
+    print(f"\tAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
+    print(f"\tValidation Loss: {valid_loss.data}")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
