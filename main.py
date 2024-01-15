@@ -37,10 +37,6 @@ with open('data/mushrooms.csv', 'r') as file:
 print(len(all_x[0]))
 
 
-train_x = all_x[:math.floor(len(all_x)*0.8)]
-train_y = all_y[:math.floor(len(all_x)*0.8)]
-valid_x = all_y[math.floor(len(all_x)*0.2):]
-valid_y = all_y[math.floor(len(all_x)*0.2):]
 
 class Value:
     def __init__(self, data, _children=(), _op="", label=""):
@@ -239,8 +235,7 @@ def optim_sum(l):
 
 
 def mean_squared_error(ys, ypred):
-    print(ys, ypred)
-    return sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
+    return optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
 '''
 def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
@@ -271,6 +266,17 @@ train_losses = []
 valid_losses = []
 
 for i in range(NUM_EPOCHS):
+
+    SAMPLE_SIZE = 5000
+    TRAIN_SPLIT = math.floor(SAMPLE_SIZE * 0.8)
+
+    # Create random mini-batch
+    epoch_x, epoch_y = zip(*random.sample(list(zip(all_x, all_y)), SAMPLE_SIZE))
+    train_x = epoch_x[:TRAIN_SPLIT]
+    train_y = epoch_y[:TRAIN_SPLIT]
+    valid_x = epoch_x[TRAIN_SPLIT:]
+    valid_y = epoch_y[TRAIN_SPLIT:]
+
     print(f"\nEpoch: {i}")
     pred_y = [nn(x) for x in train_x]  # Forward pass
     #util.draw_dot(ypred[0][0])
@@ -293,7 +299,7 @@ for i in range(NUM_EPOCHS):
     #VALIDATION
 
     pred_y = [nn(x) for x in valid_x]
-    valid_loss = mean_squared_error(train_y, pred_y)
+    valid_loss = mean_squared_error(valid_y, pred_y)
     valid_losses.append(valid_loss.data)
     pyplot.plot(range(i+1), valid_losses, color="blue")
     pyplot.pause(0.001)
