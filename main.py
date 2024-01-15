@@ -7,12 +7,14 @@ from tqdm import tqdm
 import util
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.1
+STEP_SIZE = 0.0001
 NUM_EPOCHS = 100
 
 
 all_x = []
 all_y = []
+
+colors = ["k", "n", "e", "o", "b", "y", "r", "l", "u", "p", "g", "w"]
 
 
 def progress_iter(it, desc):
@@ -27,6 +29,7 @@ def progress_iter(it, desc):
 def one_hot(string, classes):
     return [1.0 if i == string else -1.0 for i in classes]
 
+
 with open('data/mushrooms.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
@@ -39,7 +42,8 @@ with open('data/mushrooms.csv', 'r') as file:
         this_x.append(float(row[1]))
         this_x.extend(one_hot(row[2], ["b", "c", "x", "f", "s", "p", "o"]))  # Cap shape
         this_x.extend(one_hot(row[3], ["i", "g", "y", "s", "h", "k", "t", "w", "e"]))  # Cap surface
-        this_x.extend(one_hot(row[4], ["n", "b", "g", "r", "p", "u", "e", "w", "y", "l", "o", "k"]))  # Cap color
+        this_x.append(colors.index(row[4]))  # Cap color, ordinal encoding
+        # this_x.extend(one_hot(row[4], ["n", "b", "g", "r", "p", "u", "e", "w", "y", "l", "o", "k"]))  # Cap color, one-hot encoding
         this_x.append(float(row[9]))  # Stem height
         this_x.append(float(row[10]))  # Stem width
         all_x.append(this_x)
@@ -187,6 +191,7 @@ class Value:
         for node in reversed(topo):
             node._backward()
 
+
 class Neuron:
     def __init__(self, nin):
         # Initialize with random weights and biases
@@ -203,6 +208,7 @@ class Neuron:
     def get_parameters(self):
         return self.w + [self.b]
 
+
 class Layer:
 
     def __init__(self, nin, nout):
@@ -218,6 +224,7 @@ class Layer:
             ps = neuron.get_parameters()
             params.extend(ps)
         return params
+
 
 class MLP:
     def __init__(self, nin, nouts):
@@ -236,6 +243,7 @@ class MLP:
             params.extend(ps)
         return params
 
+
 def optim_sum(l):
     if len(l) == 2:
         return l[0]+l[1]
@@ -245,7 +253,7 @@ def optim_sum(l):
 
 
 def mean_squared_error(ys, ypred):
-    return optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
+    return optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])/len(ys)
 '''
 def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
@@ -263,7 +271,7 @@ def mean_squared_error(ys, ypred):
 '''
 
 
-nn = MLP(31, [16, 1])
+nn = MLP(22, [11, 6, 3, 1])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 parameters = nn.get_parameters()
