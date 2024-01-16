@@ -7,14 +7,13 @@ from tqdm import tqdm
 import util
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.0001
+STEP_SIZE = 0.03
 NUM_EPOCHS = 100
 
 
 all_x = []
 all_y = []
 
-colors = ["k", "n", "e", "o", "b", "y", "r", "l", "u", "p", "g", "w"]
 
 
 def progress_iter(it, desc):
@@ -29,28 +28,30 @@ def progress_iter(it, desc):
 def one_hot(string, classes):
     return [1.0 if i == string else -1.0 for i in classes]
 
+def scale(num):
+    return num - 40
 
-with open('data/mushrooms.csv', 'r') as file:
+def inv_scale(num):
+    return num + 40
+
+
+with open('data/concrete-strength.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
     data = list(reader)
     print(f"Data size: {len(data)}")
     random.shuffle(data)
     for r in data:
-        row = r[0].split(";")
-        this_x = []
-        this_x.append(float(row[1]))
-        this_x.extend(one_hot(row[2], ["b", "c", "x", "f", "s", "p", "o"]))  # Cap shape
-        this_x.extend(one_hot(row[3], ["i", "g", "y", "s", "h", "k", "t", "w", "e"]))  # Cap surface
-        this_x.append(colors.index(row[4]))  # Cap color, ordinal encoding
-        # this_x.extend(one_hot(row[4], ["n", "b", "g", "r", "p", "u", "e", "w", "y", "l", "o", "k"]))  # Cap color, one-hot encoding
-        this_x.append(float(row[9]))  # Stem height
-        this_x.append(float(row[10]))  # Stem width
-        all_x.append(this_x)
-        all_y.append(float({"p": -1.0, "e": 1.0}.get(row[0], 0)))  # Poisonous / Edible
+        all_x.append([float(i) for i in r[:-1]])
+        all_y.append(float(r[-1]))
 print(f"Input size: {len(all_x[0])}")
 
-
+SAMPLE_SIZE = len(all_y)
+TRAIN_SPLIT = math.floor(SAMPLE_SIZE * 0.8)
+train_x = all_x[:TRAIN_SPLIT]
+train_y = all_y[:TRAIN_SPLIT]
+valid_x = all_x[TRAIN_SPLIT:]
+valid_y = all_y[TRAIN_SPLIT:]
 
 class Value:
     def __init__(self, data, _children=(), _op="", label=""):
@@ -115,7 +116,6 @@ class Value:
 
     def __truediv__(self, other):
         return self * (other**-1)
-
 
     def __lt__(self, other):
         return self.data < other.data
@@ -193,17 +193,19 @@ class Value:
 
 
 class Neuron:
-    def __init__(self, nin):
+    def __init__(self, nin, linear=False):
         # Initialize with random weights and biases
         self.w = [Value(random.uniform(-1, 1), label="w") for i in range(nin)]
         self.b = Value(random.uniform(-1, 1), label="b")
-
+        self.linear = linear
     def __call__(self, x):
         # Weights and biases
         act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
         act.label = "act"
-        out = act.tanh()
-        return out
+        if self.linear:
+            return act
+        return act.tanh()
+
 
     def get_parameters(self):
         return self.w + [self.b]
@@ -211,8 +213,8 @@ class Neuron:
 
 class Layer:
 
-    def __init__(self, nin, nout):
-        self.neurons = [Neuron(nin) for i in range(nout)]
+    def __init__(self, nin, nout, linear=False):
+        self.neurons = [Neuron(nin, linear) for i in range(nout)]
 
     def __call__(self, x):
         outs = [n(x) for n in self.neurons]  # List neuron forward-passes
@@ -229,7 +231,7 @@ class Layer:
 class MLP:
     def __init__(self, nin, nouts):
         sz = [nin] + nouts
-        self.layers = [Layer(sz[i], sz[i+1]) for i in range(len(nouts))]  # Create all layers
+        self.layers = [Layer(sz[i], sz[i+1], i in range(len(nouts)-1, len(nouts)+1)) for i in range(len(nouts))]  # Create all layers
 
     def __call__(self, x):
         for layer in self.layers:
@@ -271,7 +273,7 @@ def mean_squared_error(ys, ypred):
 '''
 
 
-nn = MLP(22, [11, 6, 3, 1])
+nn = MLP(8, [7, 6, 2, 1])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 parameters = nn.get_parameters()
@@ -285,15 +287,11 @@ valid_losses = []
 
 for i in range(NUM_EPOCHS):
 
-    SAMPLE_SIZE = 5000
-    TRAIN_SPLIT = math.floor(SAMPLE_SIZE * 0.8)
+
 
     # Create random mini-batch
     epoch_x, epoch_y = zip(*random.sample(list(zip(all_x, all_y)), SAMPLE_SIZE))
-    train_x = epoch_x[:TRAIN_SPLIT]
-    train_y = epoch_y[:TRAIN_SPLIT]
-    valid_x = epoch_x[TRAIN_SPLIT:]
-    valid_y = epoch_y[TRAIN_SPLIT:]
+
 
     print(f"\nEpoch: {i}")
     pred_y = [nn(train_x[i]) for i in progress_iter(train_x, "Forward Pass")]  # Forward pass
@@ -302,9 +300,9 @@ for i in range(NUM_EPOCHS):
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
 
-    print(f"\tTraining Loss: {train_loss.data}")
-    train_losses.append(train_loss.data)
-    #pyplot.plot(range(i+1), train_losses, color="red")
+    print(f"\tTraining Error: {math.sqrt(train_loss.data)}")
+    train_losses.append(math.sqrt(train_loss.data))
+    pyplot.plot(range(i+1), train_losses, color="red")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
@@ -312,22 +310,15 @@ for i in range(NUM_EPOCHS):
     # util.draw_dot(loss)
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
-    STEP_SIZE *= 0.95
+    #STEP_SIZE *= 0.99
     #VALIDATION
 
     pred_y = [nn(valid_x[i]) for i in progress_iter(valid_x, "Validating")]
     valid_loss = mean_squared_error(valid_y, pred_y)
-    valid_losses.append(valid_loss.data)
-    #pyplot.plot(range(i+1), valid_losses, color="blue")
-    #pyplot.pause(0.001)
-    total = len(pred_y)
-    correct = 0
-    for p, y in zip(pred_y, valid_y):
-        if (p.data > 0) == (y > 0):
-            correct += 1
-
-    print(f"\tAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
-    print(f"\tValidation Loss: {valid_loss.data}")
+    valid_losses.append(math.sqrt(valid_loss.data))
+    pyplot.plot(range(i+1), valid_losses, color="blue")
+    pyplot.pause(0.001)
+    print(f"\tValidation Error: {math.sqrt(valid_loss.data)}")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
