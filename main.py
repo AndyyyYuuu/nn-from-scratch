@@ -245,6 +245,14 @@ class MLP:
             params.extend(ps)
         return params
 
+    def zero_grad(self):
+        for p in self.get_parameters():
+            p.grad = 0.0  # Reset gradients to 0
+
+    def nudge(self, step_size):
+        for p in self.get_parameters():
+            p.data -= step_size * p.grad  # nudge in opposite direction of gradient
+
 
 def optim_sum(l):
     if len(l) == 2:
@@ -301,28 +309,26 @@ for i in range(NUM_EPOCHS):
 
     print(f"\tTraining Error: {math.sqrt(train_loss.data)}")
 
-    for p in nn.get_parameters():
-        p.grad = 0.0  # Reset gradients to 0
+    nn.zero_grad()
     train_loss.backward()  # Backward pass
-    # util.draw_dot(loss)
-    for p in parameters:
-        p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
+    nn.nudge(STEP_SIZE)
+
     #STEP_SIZE *= 0.99
-    #VALIDATION
+
+    # VALIDATION
 
     pred_y = [nn(valid_x[i]) for i in progress_iter(valid_x, "Validating")]
 
     valid_loss = mean_squared_error(train_y, pred_y)
 
-    train_losses.append(train_loss.data)
-    train_loss_line = pyplot.plot(range(i + 1), train_losses, color="red", label="Training Loss")
-    valid_losses.append(valid_loss.data)
+    train_losses.append(math.sqrt(train_loss.data))
+    train_loss_line = pyplot.plot(range(i+1), train_losses, color="red", label="Training Loss")
+    valid_losses.append(math.sqrt(valid_loss.data))
     valid_loss_line = pyplot.plot(range(i+1), valid_losses, color="blue", label="Validation Loss")
     #pyplot.legend(handles=[train_loss_line, valid_loss_line])
-    pyplot.legend(["Training Loss", "Validation Loss"])
+    pyplot.legend(["Training Error", "Validation Error"])
 
     pyplot.pause(0.001)
     print(f"\tValidation Error: {math.sqrt(valid_loss.data)}")
 
-    for p in nn.get_parameters():
-        p.grad = 0.0  # Reset gradients to 0
+
