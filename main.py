@@ -1,59 +1,57 @@
 import math
 import random
+import sys
 import csv
-import numpy
 from matplotlib import pyplot
+from tqdm import tqdm
 import util
-weather_map = {
-    0: "sun",
-    1: "fog",
-    2: "drizzle",
-    3: "rain",
-    4: "snow",
-    "sun": 0,
-    "fog": 1,
-    "drizzle": 2,
-    "rain": 3,
-    "snow": 4
-}
 
 NUM_CLASSES = 5
-STEP_SIZE = 0.01
+STEP_SIZE = 0.03
 NUM_EPOCHS = 100
+
 
 all_x = []
 all_y = []
 
 
-def equalize_classes(data_list, num_classes):
-    categories = [[] for _ in range(num_classes)]
-    for row in data_list:
-        categories[weather_map.get(row[5])].append(row)
-    targ_len = min([len(c) for c in categories])
-    out = []
-    for sublist in [c[:targ_len] for c in categories]:
-        out.extend(sublist)
 
-    return out
+def progress_iter(it, desc):
+    return tqdm(range(len(it)),
+                desc=f'\t{desc}',
+                unit=" batches",
+                file=sys.stdout,
+                colour="GREEN",
+                bar_format="{desc}: {percentage:0.2f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed} < {remaining}]")
 
 
-with open('data/seattle-weather.csv', 'r') as file:
+def one_hot(string, classes):
+    return [1.0 if i == string else -1.0 for i in classes]
+
+def scale(num):
+    return num - 40
+
+def inv_scale(num):
+    return num + 40
+
+
+with open('data/concrete-strength.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
     data = list(reader)
-    print(len(data))
-    data = equalize_classes(data, NUM_CLASSES)
-    print(len(data))
+    print(f"Data size: {len(data)}")
     random.shuffle(data)
-    for row in data:
-        all_x.append([float(item) for item in row[1:5]])
-        weather_index = weather_map[row[5]]
-        all_y.append([1.0 if i == weather_index else -1.0 for i in range(NUM_CLASSES)])
+    for r in data:
+        all_x.append([float(i) for i in r[:-1]])
+        all_y.append(float(r[-1]))
+print(f"Input size: {len(all_x[0])}")
 
-train_x = all_x[:math.floor(len(all_x)*0.8)]
-train_y = all_y[:math.floor(len(all_x)*0.8)]
-valid_x = all_y[math.floor(len(all_x)*0.2):]
-valid_y = all_y[math.floor(len(all_x)*0.2):]
+SAMPLE_SIZE = len(all_y)
+TRAIN_SPLIT = math.floor(SAMPLE_SIZE * 0.8)
+train_x = all_x[:TRAIN_SPLIT]
+train_y = all_y[:TRAIN_SPLIT]
+valid_x = all_x[TRAIN_SPLIT:]
+valid_y = all_y[TRAIN_SPLIT:]
 
 class Value:
     def __init__(self, data, _children=(), _op="", label=""):
@@ -118,7 +116,6 @@ class Value:
 
     def __truediv__(self, other):
         return self * (other**-1)
-
 
     def __lt__(self, other):
         return self.data < other.data
@@ -194,26 +191,30 @@ class Value:
         for node in reversed(topo):
             node._backward()
 
+
 class Neuron:
-    def __init__(self, nin):
+    def __init__(self, nin, linear=False):
         # Initialize with random weights and biases
         self.w = [Value(random.uniform(-1, 1), label="w") for i in range(nin)]
         self.b = Value(random.uniform(-1, 1), label="b")
-
+        self.linear = linear
     def __call__(self, x):
         # Weights and biases
         act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
         act.label = "act"
-        out = act.tanh()
-        return out
+        if self.linear:
+            return act
+        return act.tanh()
+
 
     def get_parameters(self):
         return self.w + [self.b]
 
+
 class Layer:
 
-    def __init__(self, nin, nout):
-        self.neurons = [Neuron(nin) for i in range(nout)]
+    def __init__(self, nin, nout, linear=False):
+        self.neurons = [Neuron(nin, linear) for i in range(nout)]
 
     def __call__(self, x):
         outs = [n(x) for n in self.neurons]  # List neuron forward-passes
@@ -226,10 +227,11 @@ class Layer:
             params.extend(ps)
         return params
 
+
 class MLP:
     def __init__(self, nin, nouts):
         sz = [nin] + nouts
-        self.layers = [Layer(sz[i], sz[i+1]) for i in range(len(nouts))]  # Create all layers
+        self.layers = [Layer(sz[i], sz[i+1], i in range(len(nouts)-1, len(nouts)+1)) for i in range(len(nouts))]  # Create all layers
 
     def __call__(self, x):
         for layer in self.layers:
@@ -243,6 +245,7 @@ class MLP:
             params.extend(ps)
         return params
 
+
 def optim_sum(l):
     if len(l) == 2:
         return l[0]+l[1]
@@ -251,10 +254,9 @@ def optim_sum(l):
     return optim_sum(l[len(l)//2:]) + optim_sum(l[:len(l)//2])
 
 
-def mean_squared_error_o(ys, ypred):
-    print(ys, ypred)
-    return sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])
-
+def mean_squared_error(ys, ypred):
+    return optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])/len(ys)
+'''
 def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
     values = []
@@ -268,35 +270,11 @@ def mean_squared_error(ys, ypred):
     return s
     # return sum([mean_squared_error_o(ygt, yout) for ygt, yout in zip(ys, ypred)])
     # return sum([(yout - ygt)**2 for sublist_gt, sublist_pred in zip(ys, ypred) for ygt, yout in zip(sublist_gt, sublist_pred)])# / sum(len(sublist_gt) for sublist_gt in ys)
+'''
 
 
-
-nn = MLP(4, [2, 2, 5])
+nn = MLP(8, [7, 6, 2, 1])
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
-
-
-'''
-xs = [
-  [2.0, 3.0, -1.0],
-  [3.0, -1.0, 0.5],
-  [0.5, 1.0, 1.0],
-  [1.0, 1.0, -1.0],
-]
-ys = [1.0, -1.0, -1.0, 1.0] # desired targets
-
-
-train_x = [
-    [0.2, 0.3],
-    [0.3, 0.1],
-    [-0.3, 0.2],
-    [0.5, 0.3],
-    [-0.1, 0.9],
-    [-0.5, -0.1]
-]
-'''
-#train_y = [0.5, 0.5, -0.1, 0.8, 0.8, -0.6]
-
-
 
 parameters = nn.get_parameters()
 print(f"Parameters: {len(parameters)}")
@@ -308,15 +286,20 @@ train_losses = []
 valid_losses = []
 
 for i in range(NUM_EPOCHS):
+
+
+
+    # Create random mini-batch
+    epoch_x, epoch_y = zip(*random.sample(list(zip(all_x, all_y)), SAMPLE_SIZE))
+
+
     print(f"\nEpoch: {i}")
-    pred_y = [nn(x) for x in train_x]  # Forward pass
+    pred_y = [nn(train_x[i]) for i in progress_iter(train_x, "Forward Pass")]  # Forward pass
     #util.draw_dot(ypred[0][0])
     train_loss = mean_squared_error(train_y, pred_y)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
-
-    print(f"Training Loss: {train_loss.data}")
-
+    print(f"\tTraining Error: {math.sqrt(train_loss.data)}")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
@@ -324,11 +307,11 @@ for i in range(NUM_EPOCHS):
     # util.draw_dot(loss)
     for p in parameters:
         p.data -= STEP_SIZE * p.grad  # nudge in opposite direction of gradient
-    STEP_SIZE *= 0.95
-    print("Validating ...")
+    #STEP_SIZE *= 0.99
     #VALIDATION
 
-    pred_y = [nn(x) for x in valid_x]
+    pred_y = [nn(valid_x[i]) for i in progress_iter(valid_x, "Validating")]
+
     valid_loss = mean_squared_error(train_y, pred_y)
 
     train_losses.append(train_loss.data)
@@ -337,17 +320,9 @@ for i in range(NUM_EPOCHS):
     valid_loss_line = pyplot.plot(range(i+1), valid_losses, color="blue", label="Validation Loss")
     #pyplot.legend(handles=[train_loss_line, valid_loss_line])
     pyplot.legend(["Training Loss", "Validation Loss"])
+
     pyplot.pause(0.001)
-    total = len(pred_y)
-    correct = 0
-    for p, y in zip(pred_y, valid_y):
-        print(p.index(max(p)), end='')
-        if p.index(max(p)) == y.index(max(y)):
-
-            correct += 1
-
-    print(f"\nAccuracy: {correct}/{total} = {round(correct/total*100,2)}%")
-    print(f"Loss: {valid_loss.data}")
+    print(f"\tValidation Error: {math.sqrt(valid_loss.data)}")
 
     for p in nn.get_parameters():
         p.grad = 0.0  # Reset gradients to 0
