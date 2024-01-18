@@ -264,6 +264,11 @@ def optim_sum(l):
 
 def mean_squared_error(ys, ypred):
     return optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])/len(ys)
+
+
+def mean_abs_error(ys, ypred):
+    return sum([abs((yout - ygt).data) for ygt, yout in zip(ys, ypred)]) / len(ys)
+
 '''
 def mean_squared_error(ys, ypred):
     s = Value(0.0, label="sqerr")
@@ -302,12 +307,13 @@ for i in range(NUM_EPOCHS):
 
 
     print(f"\nEpoch: {i}")
-    pred_y = [nn(train_x[i]) for i in progress_iter(train_x, "Forward Pass")]  # Forward pass
+    train_pred_y = [nn(train_x[i]) for i in progress_iter(train_x, "Forward Pass")]  # Forward pass
     #util.draw_dot(ypred[0][0])
-    train_loss = mean_squared_error(train_y, pred_y)
+    train_loss = mean_squared_error(train_y, train_pred_y)
+    train_abs_error = mean_abs_error(train_y, train_pred_y)
     #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
-    print(f"\tTraining Error: {math.sqrt(train_loss.data)}")
+    print(f"\tTraining Error: {train_abs_error}")
 
     nn.zero_grad()
     train_loss.backward()  # Backward pass
@@ -317,18 +323,19 @@ for i in range(NUM_EPOCHS):
 
     # VALIDATION
 
-    pred_y = [nn(valid_x[i]) for i in progress_iter(valid_x, "Validating")]
+    valid_pred_y = [nn(valid_x[i]) for i in progress_iter(valid_x, "Validating")]
 
-    valid_loss = mean_squared_error(train_y, pred_y)
+    valid_loss = mean_squared_error(train_y, valid_pred_y)
+    valid_abs_error = mean_abs_error(valid_y, valid_pred_y)
 
-    train_losses.append(math.sqrt(train_loss.data))
-    train_loss_line = pyplot.plot(range(i+1), train_losses, color="red", label="Training Loss")
-    valid_losses.append(math.sqrt(valid_loss.data))
-    valid_loss_line = pyplot.plot(range(i+1), valid_losses, color="blue", label="Validation Loss")
+    train_losses.append(train_abs_error)
+    train_loss_line = pyplot.plot(range(i+1), train_losses, color="red", label="Training Error")
+    valid_losses.append(valid_abs_error)
+    valid_loss_line = pyplot.plot(range(1, i+2), valid_losses, color="blue", label="Validation Error")
     #pyplot.legend(handles=[train_loss_line, valid_loss_line])
     pyplot.legend(["Training Error", "Validation Error"])
 
     pyplot.pause(0.001)
-    print(f"\tValidation Error: {math.sqrt(valid_loss.data)}")
+    print(f"\tValidation Error: {valid_abs_error}")
 
 
