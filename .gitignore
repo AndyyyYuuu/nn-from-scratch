@@ -163,3 +163,5 @@ graph.gv
 graph.gv.svg
 .idea/inspectionProfiles/profiles_settings.xml
 *.xml
+.idea/.gitignore
+.idea/nn-from-scratch.iml
