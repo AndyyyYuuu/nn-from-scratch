@@ -1,5 +1,6 @@
 import random
 import math
+from typing import Union
 
 
 class Value:
@@ -163,25 +164,25 @@ class Neuron:
         self.b = Value(random.uniform(-1, 1), label="b")
         self.linear = linear
 
-    def __call__(self, x: list[Value]):
+    def __call__(self, x: list[Union[float, Value]]):
         """Passes data through the neuron.
 
         Args:
             x (:obj:`list` of :obj:`Value`): The inputs of the neuron.
 
         Returns:
-            Value: The output of the neuron.
+            Union(float, Value): The output of the neuron.
         """
         # Weights and biases
         act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
-        act.label = "a"
+
         if self.linear:
             return act
         return act.tanh()
 
     def get_parameters(self):
         """
-        :obj:`list` of :obj:`Value`: A list of all weights and biases (as Values) of the `Neuron`.
+        list[Value]: A list of all weights and biases (as Values) of the `Neuron`.
         """
         return self.w + [self.b]
 
@@ -198,14 +199,14 @@ class Layer:
     def __init__(self, nin: int, nout: int, linear=False):
         self.neurons = [Neuron(nin, linear) for i in range(nout)]
 
-    def __call__(self, x: list[Value]):
+    def __call__(self, x: list[Union[float, Value]]):
         """Passes data through the network layer.
 
         Args:
             x (:obj:`list` of :obj:`Value`): The inputs of the layer. .
 
         Returns:
-            Value, list[Value]: The output(s) of the layer.
+            Union(Value, list[Value]): The output(s) of the layer.
         """
         outs = [n(x) for n in self.neurons]  # List neuron forward-passes
         return outs[0] if len(outs) == 1 else outs
@@ -231,14 +232,14 @@ class MLP:
     def __init__(self, size: list[int], lin_layers: int = 0):
         self.layers = [Layer(size[i], size[i+1], i in range(len(size)-lin_layers, len(size))) for i in range(len(size)-1)]  # Create all layers
 
-    def __call__(self, x: list[Value]):
+    def __call__(self, x: list[Union[float, Value]]):
         """Passes data forward through the MLP.
 
         Args:
             x (:obj:`list` of :obj:`Value`): The inputs of the MLP.
 
         Returns:
-            Value, list[Value]: The output(s) of the MLP.
+            Union(Value, list[Value]): The output(s) of the MLP.
         """
         for layer in self.layers:
             x = layer(x)
@@ -273,14 +274,14 @@ class MLP:
 
 
 # Utility functions
-def _optim_sum(nums: list[float, Value]):
+def _optim_sum(nums: list[Union[float, Value]]):
     """Recursively sums all elements of `nums` in pairs to minimize operation depth.
 
     Args:
         nums (:obj:`list` of :obj:`float`): the list of numbers to sum.
 
     Returns:
-        The sum of all elements in `nums`.
+        Union(float, Value): The sum of all elements in `nums`.
     """
     if len(nums) == 2:
         return nums[0]+nums[1]
@@ -289,7 +290,7 @@ def _optim_sum(nums: list[float, Value]):
     return _optim_sum(nums[len(nums)//2:]) + _optim_sum(nums[:len(nums)//2])
 
 
-def mean_squared_error(ys: list[float, Value], ypred: list[float, Value]):
+def mean_squared_error(ys: list[Union[float, Value]], ypred: list[Union[float, Value]]):
     """Computes mean squared error (MSE).
 
         Args:
@@ -297,12 +298,12 @@ def mean_squared_error(ys: list[float, Value], ypred: list[float, Value]):
             ypred: predicted result
 
         Returns:
-            float: the mean squared error between `ys` and `ypred`.
+            Union(float, Value): the mean squared error between `ys` and `ypred`.
     """
     return _optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])/len(ys)
 
 
-def mean_abs_error(ys: list[float, Value], ypred: list[float, Value]):
+def mean_abs_error(ys: list[Union[float, Value]], ypred: list[float, Value]):
     """Computes mean absolute error (MAE).
 
     Args:
@@ -310,7 +311,7 @@ def mean_abs_error(ys: list[float, Value], ypred: list[float, Value]):
         ypred: predicted result
 
     Returns:
-        the mean absolute error between `ys` and `ypred`.
+        Union(float, Value): the mean absolute error between `ys` and `ypred`.
     """
     return sum([abs((yout - ygt).data) for ygt, yout in zip(ys, ypred)]) / len(ys)
 

@@ -22,9 +22,6 @@ def progress_iter(it, desc):
                 bar_format="{desc}: {percentage:0.2f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed} < {remaining}]")
 
 
-
-
-
 with open('data/concrete-strength.csv', 'r') as file:
     reader = csv.reader(file)
     header = next(reader)
@@ -44,14 +41,10 @@ valid_x = all_x[TRAIN_SPLIT:]
 valid_y = all_y[TRAIN_SPLIT:]
 
 nn = anndy.MLP([8, 7, 6, 2, 1], lin_layers=2)
-# util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 parameters = nn.get_parameters()
 print(f"Parameters: {len(parameters)}")
 
-# util.draw_dot(loss)
-
-#pyplot.axis((0, NUM_EPOCHS, 0, 500))
 train_losses = []
 valid_losses = []
 
@@ -65,15 +58,12 @@ for i in range(NUM_EPOCHS):
     train_pred_y = [nn(train_x[i]) for i in progress_iter(train_x, "Forward Pass")]  # Forward pass
     train_loss = anndy.mean_squared_error(train_y, train_pred_y)
     train_abs_error = anndy.mean_abs_error(train_y, train_pred_y)
-    #loss = [mean_squared_error_o(i, j) for i, j in zip(train_y, ypred)]  # Compute loss
 
     print(f"\tTraining Error: {train_abs_error}")
 
     nn.zero_grad()
     train_loss.backward()  # Backward pass
     nn.nudge(STEP_SIZE)
-
-    #STEP_SIZE *= 0.99
 
     # VALIDATION
 
@@ -86,7 +76,6 @@ for i in range(NUM_EPOCHS):
     train_loss_line = pyplot.plot(range(i+1), train_losses, color="red", label="Training Error")
     valid_losses.append(valid_abs_error)
     valid_loss_line = pyplot.plot(range(1, i+2), valid_losses, color="blue", label="Validation Error")
-    #pyplot.legend(handles=[train_loss_line, valid_loss_line])
     pyplot.legend(["Training Error", "Validation Error"])
 
     pyplot.pause(0.001)
