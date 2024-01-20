@@ -114,12 +114,6 @@ class Value:
                 t = 1.0
             else:
                 t = -1.0
-        '''
-        if x < 0:
-            t = 2 * math.exp(x) / (1+math.exp(2*x)) - 1
-        else:
-            t = 2 * (1 / math.exp(-2*x)) - 1
-        '''
         out = Value(t, (self, ), "tanh")
 
         def _backward():
@@ -154,22 +148,33 @@ class Value:
 
 class Neuron:
     """A single neuron, with inputs and output.
+    Args:
+        nin (int): The number of inputs of the neuron.
+        linear (bool, optional): Whether the activation function is linear (True) or tanh (False). Defaults to False.
 
     Attributes:
         w (float): The weights of the neuron.
         b (float): The bias of the neuron.
 
     """
-    def __init__(self, nin, linear=False):
+    def __init__(self, nin: int, linear=False):
         # Initialize with random weights and biases
         self.w = [Value(random.uniform(-1, 1), label="w") for i in range(nin)]
         self.b = Value(random.uniform(-1, 1), label="b")
         self.linear = linear
 
-    def __call__(self, x):
+    def __call__(self, x: list[Value]):
+        """Passes data through the neuron.
+
+        Args:
+            x (:obj:`list` of :obj:`Value`): The inputs of the neuron.
+
+        Returns:
+            Value: The output of the neuron.
+        """
         # Weights and biases
         act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
-        act.label = "act"
+        act.label = "a"
         if self.linear:
             return act
         return act.tanh()
@@ -183,14 +188,25 @@ class Neuron:
 
 class Layer:
     """A layer in the neural network, with inputs and outputs.
-
+    Args:
+        nin (int): The number of neurons in the previous layer.
+        nout (int): The number of neurons in the current layer.
+        linear (bool, optional): Whether the activation function is linear (True) or tanh (False). Defaults to False.
     Attributes:
-        neurons (:obj:`list` of :obj:`neuron`): An list of the layer's neurons.
+        neurons (:obj:`list` of :obj:`neuron`): A list of the layer's neurons.
     """
-    def __init__(self, nin, nout, linear=False):
+    def __init__(self, nin: int, nout: int, linear=False):
         self.neurons = [Neuron(nin, linear) for i in range(nout)]
 
-    def __call__(self, x):
+    def __call__(self, x: list[Value]):
+        """Passes data through the network layer.
+
+        Args:
+            x (:obj:`list` of :obj:`Value`): The inputs of the layer. .
+
+        Returns:
+            Value, list[Value]: The output(s) of the layer.
+        """
         outs = [n(x) for n in self.neurons]  # List neuron forward-passes
         return outs[0] if len(outs) == 1 else outs
 
@@ -207,15 +223,23 @@ class Layer:
 
 class MLP:
     """A multi-layer perceptron with input, output, and  some optimization functions.
-
+    Args:
+        size (:obj:`list` of :obj:`int`): A list containing sizes of the MLP's layers.
     Attributes:
         layers (:obj:`list` of :obj:`layer`): An ordered list of the MLP's layers.
     """
-    def __init__(self, nin, nouts):
-        sz = [nin] + nouts
-        self.layers = [Layer(sz[i], sz[i+1], i in range(len(nouts)-1, len(nouts)+1)) for i in range(len(nouts))]  # Create all layers
+    def __init__(self, size: list[int], lin_layers: int = 0):
+        self.layers = [Layer(size[i], size[i+1], i in range(len(size)-lin_layers, len(size))) for i in range(len(size)-1)]  # Create all layers
 
-    def __call__(self, x):
+    def __call__(self, x: list[Value]):
+        """Passes data forward through the MLP.
+
+        Args:
+            x (:obj:`list` of :obj:`Value`): The inputs of the MLP.
+
+        Returns:
+            Value, list[Value]: The output(s) of the MLP.
+        """
         for layer in self.layers:
             x = layer(x)
         return x
@@ -232,12 +256,12 @@ class MLP:
 
     def zero_grad(self):
         """
-        Resets all gradients in the `MLP`.
+        Resets all gradients in the `MLP` to 0.0.
         """
         for p in self.get_parameters():
             p.grad = 0.0  # Reset gradients to 0
 
-    def nudge(self, step_size):
+    def nudge(self, step_size: float):
         """Nudges the `MLP` in the opposite direction of the gradient.
 
         Args:
@@ -249,7 +273,7 @@ class MLP:
 
 
 # Utility functions
-def _optim_sum(nums):
+def _optim_sum(nums: list[float, Value]):
     """Recursively sums all elements of `nums` in pairs to minimize operation depth.
 
     Args:
@@ -265,7 +289,7 @@ def _optim_sum(nums):
     return _optim_sum(nums[len(nums)//2:]) + _optim_sum(nums[:len(nums)//2])
 
 
-def mean_squared_error(ys, ypred):
+def mean_squared_error(ys: list[float, Value], ypred: list[float, Value]):
     """Computes mean squared error (MSE).
 
         Args:
@@ -278,7 +302,7 @@ def mean_squared_error(ys, ypred):
     return _optim_sum([(yout - ygt)**2 for ygt, yout in zip(ys, ypred)])/len(ys)
 
 
-def mean_abs_error(ys, ypred):
+def mean_abs_error(ys: list[float, Value], ypred: list[float, Value]):
     """Computes mean absolute error (MAE).
 
     Args:
@@ -291,12 +315,12 @@ def mean_abs_error(ys, ypred):
     return sum([abs((yout - ygt).data) for ygt, yout in zip(ys, ypred)]) / len(ys)
 
 
-def one_hot(string, classes):
+def one_hot(string, classes: list):
     """Performs one-hot encoding of `string` based on possible `classes`.
 
     Args:
-        string (str): the item to encode.
-        classes (:obj:`list` of :obj:`str`): a list of all possible classes.
+        string (Any): the item to encode.
+        classes (:obj:`list` of :obj:`Any`): a list of all possible classes.
     Returns:
         :obj:`list` of :obj:`float`: a list of values, either -1.0 or 1.0, representing the one-hot encoding of `string`.
     """

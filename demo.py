@@ -43,7 +43,7 @@ train_y = all_y[:TRAIN_SPLIT]
 valid_x = all_x[TRAIN_SPLIT:]
 valid_y = all_y[TRAIN_SPLIT:]
 
-nn = anndy.MLP(8, [7, 6, 2, 1])
+nn = anndy.MLP([8, 7, 6, 2, 1], lin_layers=2)
 # util.draw_dot(nn([2.0, 3.0, -1.0]))
 
 parameters = nn.get_parameters()
