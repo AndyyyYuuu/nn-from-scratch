@@ -40,7 +40,7 @@ train_y = all_y[:TRAIN_SPLIT]
 valid_x = all_x[TRAIN_SPLIT:]
 valid_y = all_y[TRAIN_SPLIT:]
 
-nn = anndy.MLP((8, "tanh"), (7, "tanh"), (6, "tanh"), (2, "linear"), (1, "linear"))
+nn = anndy.MLP((8, "tanh"), (7, "tanh"), (6, "tanh"), (2, "relu"), (1, "relu"))
 
 parameters = nn.get_parameters()
 print(f"Parameters: {len(parameters)}")

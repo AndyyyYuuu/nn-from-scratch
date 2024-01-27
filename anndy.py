@@ -123,6 +123,16 @@ class Value:
         out._backward = _backward
         return out
 
+    def relu(self):
+        x = self.data
+        out = Value(max(0, x), (self, ), "relu")
+
+        def _backward():
+            self.grad = out.grad * (x > 0)
+
+        out._backward = _backward
+        return out
+
     def backward(self):
         """
         Traces backward and computes gradients of all child nodes.
@@ -176,9 +186,12 @@ class Neuron:
         # Weights and biases
         act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
 
-        if self.type == "linear":
-            return act
-        return act.tanh()
+
+        if self.type == "relu":
+            return act.relu()
+        elif self.type == "tanh":
+            return act.tanh()
+        return act
 
     def get_parameters(self):
         """
