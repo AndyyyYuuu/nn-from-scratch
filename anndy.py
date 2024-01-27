@@ -158,11 +158,11 @@ class Neuron:
         b (float): The bias of the neuron.
 
     """
-    def __init__(self, nin: int, linear=False):
+    def __init__(self, nin: int, type: str):
         # Initialize with random weights and biases
         self.w = [Value(random.uniform(-1, 1), label="w") for i in range(nin)]
         self.b = Value(random.uniform(-1, 1), label="b")
-        self.linear = linear
+        self.type = type
 
     def __call__(self, x: list[Union[float, Value]]):
         """Passes data through the neuron.
@@ -176,7 +176,7 @@ class Neuron:
         # Weights and biases
         act = sum([wi*xi for wi, xi in list(zip(self.w, x))], self.b)
 
-        if self.linear:
+        if self.type == "linear":
             return act
         return act.tanh()
 
@@ -196,8 +196,8 @@ class Layer:
     Attributes:
         neurons (:obj:`list` of :obj:`neuron`): A list of the layer's neurons.
     """
-    def __init__(self, nin: int, nout: int, linear=False):
-        self.neurons = [Neuron(nin, linear) for i in range(nout)]
+    def __init__(self, nin: int, nout: int, type: str):
+        self.neurons = [Neuron(nin, type) for i in range(nout)]
 
     def __call__(self, x: list[Union[float, Value]]):
         """Passes data through the network layer.
@@ -229,8 +229,10 @@ class MLP:
     Attributes:
         layers (:obj:`list` of :obj:`layer`): An ordered list of the MLP's layers.
     """
-    def __init__(self, size: list[int], lin_layers: int = 0):
-        self.layers = [Layer(size[i], size[i+1], i in range(len(size)-lin_layers, len(size))) for i in range(len(size)-1)]  # Create all layers
+
+    def __init__(self, *layers: (str, int)):
+        size = tuple(i[0] for i in layers)
+        self.layers = [Layer(size[i], size[i+1], layers[i][1]) for i in range(len(size)-1)]  # Create all layers
 
     def __call__(self, x: list[Union[float, Value]]):
         """Passes data forward through the MLP.

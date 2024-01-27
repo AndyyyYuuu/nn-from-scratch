@@ -40,7 +40,7 @@ train_y = all_y[:TRAIN_SPLIT]
 valid_x = all_x[TRAIN_SPLIT:]
 valid_y = all_y[TRAIN_SPLIT:]
 
-nn = anndy.MLP([8, 7, 6, 2, 1], lin_layers=2)
+nn = anndy.MLP((8, "tanh"), (7, "tanh"), (6, "tanh"), (2, "linear"), (1, "linear"))
 
 parameters = nn.get_parameters()
 print(f"Parameters: {len(parameters)}")
@@ -80,3 +80,7 @@ for i in range(NUM_EPOCHS):
 
     pyplot.pause(0.001)
     print(f"\tValidation Error: {valid_abs_error}")
+
+
+train_pred_y = [nn(x) for x in train_x]
+train_loss = anndy.mean_squared_error(train_y, train_pred_y)
