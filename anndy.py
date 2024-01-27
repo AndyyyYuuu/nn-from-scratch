@@ -242,9 +242,15 @@ class MLP:
     Attributes:
         layers (:obj:`list` of :obj:`layer`): An ordered list of the MLP's layers.
     """
+    layer_type_choices = ["relu", "linear", "tanh"]
 
     def __init__(self, *layers: (str, int)):
         size = tuple(i[0] for i in layers)
+
+        for i in layers:
+            if i[1] not in self.layer_type_choices:
+                raise ValueError(f"Invalid layer activation type. Choose from: {self.layer_type_choices}.")
+
         self.layers = [Layer(size[i], size[i+1], layers[i][1]) for i in range(len(size)-1)]  # Create all layers
 
     def __call__(self, x: list[Union[float, Value]]):
