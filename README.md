@@ -16,7 +16,7 @@ For a simple demo on a regression task, run `demo.py`.
 ## 🧠 Example Usage
 Initialization: 
 ```py
-nn = anndy.MLP([3, 4, 2, 1])  # Initialize multi-layer perceptron
+nn = anndy.MLP((8, "tanh"), (4, "tanh"), (2, "relu"), (1, "relu"))  # Initialize multi-layer perceptron
 ```
 Optimization loop: 
 ```py
