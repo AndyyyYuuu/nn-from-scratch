@@ -33,4 +33,5 @@ nn.nudge(0.001)  # Descend gradient
 ## 🔗 Links & Sources
 - Based on Andrej Karpathy's video: https://youtu.be/VMj-3S1tku0 (recommend building this project if you're just getting started with neural networks)
 - Concrete strength dataset used in the demo: https://www.kaggle.com/datasets/niteshyadav3103/concrete-compressive-strength
+- My explanation article: https://medium.com/@andyyy.yuuu/neural-network-from-scratch-no-pytorch-no-numpy-just-vanilla-python-56be311eac89
 - My jazz playlist (entirely unrelated): https://open.spotify.com/playlist/6Uw2DCToKXVVqmnu33m8Xy
